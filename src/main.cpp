@@ -24,25 +24,55 @@ using namespace std;
 	"</body></html>\n"
 
 // Uses the content of the stream as the response.
-int dumpstream(struct MHD_Connection * connection, stringstream &s, int status) {
+int dumpstream(struct MHD_Connection * connection, stringstream &s, int status, const char * mimetype) {
 	struct MHD_Response * response = MHD_create_response_from_data(s.tellp(), (void*)s.str().c_str(), MHD_NO, MHD_YES);
+	MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_TYPE, mimetype);
+	MHD_add_response_header(response, MHD_HTTP_HEADER_SERVER, "Pixel-Server");
 	int ret = MHD_queue_response(connection, status, response);
 	MHD_destroy_response(response);
 	return ret;
 }
 
-int dumpimage(struct MHD_Connection * connection) {
+void user_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
+	stringstream * s = (stringstream *)png_get_io_ptr(png_ptr);
+	s->write((const char*)data, length);
+}
+void user_flush_data(png_structp png_ptr) {
+}
+
+int dumpimage(struct MHD_Connection * connection, int width, int height, int * data) {
+	int ret;
+	stringstream s;
+	png_bytep row_pointers[height];
+	
 	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-	if (png_ptr == NULL) {
-		stringstream s;
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	printf("ptrs: %p %p.\n", png_ptr, info_ptr);
+	if (png_ptr && info_ptr && !setjmp(png_jmpbuf(png_ptr))) {
+		printf("Going to create image.\n");
+		png_set_write_fn(png_ptr, &s, user_write_data, user_flush_data);
+		png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		for (int i = 0; i < height; i++) row_pointers[i] = (png_byte*)(data + i*width);
+		png_set_rows(png_ptr, info_ptr, row_pointers);
+		png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, 0);
+		ret = dumpstream(connection, s, MHD_HTTP_OK, "image/png");
+	} else {
 		s << HEAD("500 - Error!");
-		s << "Could not create png write struct\n";
+		s << "Could not create png image.\n";
 		s << TAIL();
-		return dumpstream(connection, s, MHD_HTTP_INTERNAL_SERVER_ERROR);
+		ret = dumpstream(connection, s, MHD_HTTP_INTERNAL_SERVER_ERROR, "text/html");
 	}
-	struct MHD_Response * response = MHD_create_response_from_data(0, (void*)0, MHD_NO, MHD_YES);
-	int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-	MHD_destroy_response(response);
+	png_destroy_write_struct(&png_ptr, &info_ptr);
+	return ret;
+}
+
+int tile(struct MHD_Connection * connection, int x, int y) {
+	int * pixels = new int[TILE_SIZE * TILE_SIZE];
+	for (int i=0; i<TILE_SIZE * TILE_SIZE; i++) {
+		pixels[i]=rand()|0xff000000;
+	}
+	int ret = dumpimage(connection, TILE_SIZE, TILE_SIZE, pixels);
+	delete[] pixels;
 	return ret;
 }
 
@@ -56,29 +86,36 @@ int handler(void * cls,
 			void ** ptr) 
 {
 	int status = MHD_HTTP_OK;
+	const char * mimetype = "text/html";
 	if (0 != strcmp(method, "GET")) return MHD_NO; /* unexpected method */
 	stringstream s;
 	if (0 == strcmp(url, "/")) {
 		s << HEAD("Pixel-Server");
 		s << "<h1>Pixel-Server</h1>\n";
-		for (int y = 0; y < 4; y++) {
-			for (int x = 0; x < 6; x++) {
-				s << "<img src=\"tile?x=" << x << "&y=" << y << "\"/>";
+		s << "<table>\n";
+		for (int y = 0; y < 3; y++) {
+			s << "<tr>";
+			for (int x = 0; x < 5; x++) {
+				s << "<td><img src=\"tile?x=" << x << "&y=" << y << "\"/></td>";
 			}
-			s << "<br/>\n";
+			s << "</tr>\n";
 		}
+		s << "</table>\n";
 		s << TAIL();
 	} else if (0 == strcmp(url, "/style.css")) {
 		s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; }\n";
+		s << "table {border-spacing: 0; }\n";
+		s << "td {padding: 0; }\n";
+		mimetype = "text/css";
 	} else if (0 == strcmp(url, "/tile")) {
-		
+		return tile(connection, 0, 0);
 	} else {
 		s << HEAD("404 - Not Found!");
 		s << "Could not find " << url << endl;
 		s << TAIL();
 		status = MHD_HTTP_NOT_FOUND;
 	}
-	return dumpstream(connection, s, status);
+	return dumpstream(connection, s, status, mimetype);
 }
 
 void * my_logger(void * cls, const char * uri) {
