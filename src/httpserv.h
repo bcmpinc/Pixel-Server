@@ -12,9 +12,9 @@ struct HttpHeader {
 
 class Connection {
 public:
-	Connection(const char * url, struct MHD_Connection *, class HttpServer *);
-	void head(const char * title);
-	void tail();
+	Connection(const char * url, struct MHD_Connection *, class HttpServer *) throw();
+	void head(const char * title) throw();
+	void tail() throw();
 
 	int dumpstream(int status, const char * mimetype, HttpHeader * headers = NULL) throw();
 	
@@ -28,6 +28,8 @@ public:
 
 	std::stringstream s;
 	const char * url;
+	
+	bool isurl(const char *) throw();
 private:
 	struct MHD_Connection * connection;
 	class HttpServer * server;

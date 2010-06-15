@@ -6,9 +6,6 @@
 #include "pngwrite.h"
 #include "httpserv.h"
 
-
-using namespace std;
-
 #define PORT 9999
 
 char etag[32];
@@ -17,7 +14,7 @@ int handler(Connection& c) {
 	if (0 == strcmp(c.getstring(MHD_HEADER_KIND, MHD_HTTP_HEADER_IF_NONE_MATCH, ""), etag)) {
 		printf("Not modified\n");
 		return c.dumpstream(MHD_HTTP_NOT_MODIFIED, "text/html");
-	} else if (0 == strcmp(c.url, "/")) {
+	} else if (c.isurl("/")) {
 		printf("Page\n");
 		int x = c.getint(MHD_GET_ARGUMENT_KIND, "x", 0);
 		int y = c.getint(MHD_GET_ARGUMENT_KIND, "y", 0);
@@ -37,13 +34,13 @@ int handler(Connection& c) {
 		c.s << "</table>\n";
 		c.tail();
 		return c.dumpstream(MHD_HTTP_OK, "text/html");
-	} else if (0 == strcmp(c.url, "/style.css")) {
+	} else if (c.isurl("/style.css")) {
 		printf("Style sheet\n");
 		c.s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; }\n";
 		c.s << "table {border-spacing: 0; border: 1px solid black;}\n";
 		c.s << "td {padding: 0; }\n";
 		return c.dumpstream(MHD_HTTP_OK, "text/css");
-	} else if (0 == strcmp(c.url, "/tile")) {
+	} else if (c.isurl("/tile")) {
 		int x = c.getint(MHD_GET_ARGUMENT_KIND, "x");
 		int y = c.getint(MHD_GET_ARGUMENT_KIND, "y");
 		float scale = c.getfloat(MHD_GET_ARGUMENT_KIND, "scale", 1.0);
@@ -68,7 +65,7 @@ int handler(Connection& c) {
 	} else {
 		printf("Not found\n");
 		c.head("404 - Not Found!");
-		c.s << "Could not find " << c.url << endl;
+		c.s << "Could not find " << c.url << std::endl;
 		c.tail();
 		return c.dumpstream(MHD_HTTP_NOT_FOUND, "text/html");
 	}

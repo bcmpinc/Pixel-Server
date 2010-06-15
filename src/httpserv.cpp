@@ -4,17 +4,17 @@
 
 #include "httpserv.h"
 
-void Connection::head(const char * title) {
+void Connection::head(const char * title) throw() {
 	s<<"<html><head><title>"<<title<<"</title>\n";
 	s<<"<link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\" />";
 	s<<"</head><body>\n";
 }
 
-void Connection::tail() {
+void Connection::tail() throw() {
 	s<<"</body></html>\n";
 }
 
-void append_headers(struct MHD_Response * response, HttpHeader * headers) {
+void append_headers(struct MHD_Response * response, HttpHeader * headers) throw() {
 	if (headers) while(headers->key) { 
 		MHD_add_response_header(response, headers->key, headers->value);
 		headers++;
@@ -82,9 +82,12 @@ const char * Connection::getstring(MHD_ValueKind kind, const char * arg, const c
 	return result;
 }
 
-Connection::Connection(const char * u, struct MHD_Connection * c, class HttpServer * s) :
+bool Connection::isurl(const char * u) throw() {
+	return 0 == strcmp(u, url);
+}
+
+Connection::Connection(const char * u, struct MHD_Connection * c, class HttpServer * s) throw() :
 	url(u), connection(c), server(s) {
-	
 }
 
 int http_handler(void * cls,
@@ -94,7 +97,7 @@ int http_handler(void * cls,
 			const char * version,
 			const char * upload_data,
 			size_t * upload_data_size,
-			void ** ptr) 
+			void ** ptr) throw()
 {
 	if (0 != strcmp(method, "GET")) return MHD_NO; /* unexpected method */
 	try {
@@ -104,10 +107,9 @@ int http_handler(void * cls,
 	} catch (int ret) {
 		return ret;
 	}
-
 }
 
-void * my_logger(void * cls, const char * uri) {
+void * my_logger(void * cls, const char * uri) throw() {
 	printf("Requested: %s - ", uri);
 	return NULL;
 }
