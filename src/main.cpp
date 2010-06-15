@@ -68,12 +68,49 @@ int dumpimage(struct MHD_Connection * connection, int width, int height, int * d
 	return ret;
 }
 
-int invalidarg(struct MHD_Connection * connection, const char * arg) {
+void invalidarg(struct MHD_Connection * connection, const char * arg, const char * type, const char * state) throw(int) {
 	printf("Invalid arg: %s\n", arg);
 	stringstream s;
-	s<<HEAD("422 - Argument missing")<<"Argument "<<arg<<" is missing or invalid.\n"<<TAIL();
-	return dumpstream(connection, s, MHD_HTTP_UNPROCESSABLE_ENTITY, "text/html");
+	s<<HEAD("422 - Argument missing")<<"Argument "<<arg<<" = ["<<type<<"] is "<<state<<".\n"<<TAIL();
+	throw dumpstream(connection, s, MHD_HTTP_UNPROCESSABLE_ENTITY, "text/html");
 }
+
+int getint(struct MHD_Connection * connection, const char * arg) {
+	int result;
+	const char * value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, arg);
+	if (!value) {
+		invalidarg(connection, arg, "integer", "missing");
+	} else if (sscanf(value, "%d", &result)<0)
+		invalidarg(connection, arg, "integer", "invalid");
+	return result;
+}
+
+int getint(struct MHD_Connection * connection, const char * arg, int def) {
+	int result=def;
+	const char * value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, arg);
+	if (value && sscanf(value, "%d", &result)<0)
+		invalidarg(connection, arg, "integer", "invalid");
+	return result;
+}
+
+float getfloat(struct MHD_Connection * connection, const char * arg) {
+	float result;
+	const char * value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, arg);
+	if (!value) {
+		invalidarg(connection, arg, "float", "missing");
+	} else if (sscanf(value, "%f", &result)<0)
+		invalidarg(connection, arg, "float", "invalid");
+	return result;
+}
+
+float getfloat(struct MHD_Connection * connection, const char * arg, float def) {
+	float result = def;
+	const char * value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, arg);
+	if (value && sscanf(value, "%f", &result)<0)
+		invalidarg(connection, arg, "float", "invalid");
+	return result;
+}
+
 
 int handler(void * cls,
 			struct MHD_Connection * connection,
@@ -88,70 +125,60 @@ int handler(void * cls,
 	const char * mimetype = "text/html";
 	if (0 != strcmp(method, "GET")) return MHD_NO; /* unexpected method */
 
-	stringstream s;
-	const char * value = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, MHD_HTTP_HEADER_IF_NONE_MATCH);
-	if (value && 0 == strcmp(value, etag)) {
-		printf("Not modified\n");
-		status = MHD_HTTP_NOT_MODIFIED;
-	} else if (0 == strcmp(url, "/")) {
-		printf("Page\n");
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "scale");
-		s << HEAD("Pixel-Server");
-		s << "<h1>Pixel-Server</h1>\n";
-		s << "<table>\n";
-		for (int y = 0; y < TILES_Y; y++) {
-			s << "<tr>";
-			for (int x = 0; x < TILES_X; x++) {
-				s << "<td><img src=\"tile?x=" << x << "&y=" << y;
-				if (value) s << "&scale=" << value;
-				s << "\"/></td>";
+	try {
+		stringstream s;
+		const char * value = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, MHD_HTTP_HEADER_IF_NONE_MATCH);
+		if (value && 0 == strcmp(value, etag)) {
+			printf("Not modified\n");
+			status = MHD_HTTP_NOT_MODIFIED;
+		} else if (0 == strcmp(url, "/")) {
+			printf("Page\n");
+			value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "scale");
+			s << HEAD("Pixel-Server");
+			s << "<h1>Pixel-Server</h1>\n";
+			s << "<table>\n";
+			for (int y = 0; y < TILES_Y; y++) {
+				s << "<tr>";
+				for (int x = 0; x < TILES_X; x++) {
+					s << "<td><img src=\"tile?x=" << x << "&y=" << y;
+					if (value) s << "&scale=" << value;
+					s << "\"/></td>";
+				}
+				s << "</tr>\n";
 			}
-			s << "</tr>\n";
+			s << "</table>\n";
+			s << TAIL();
+		} else if (0 == strcmp(url, "/style.css")) {
+			printf("Style sheet\n");
+			s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; }\n";
+			s << "table {border-spacing: 0; border: 1px solid black;}\n";
+			s << "td {padding: 0; }\n";
+			mimetype = "text/css";
+		} else if (0 == strcmp(url, "/tile")) {
+			int x = getint(connection, "x");;
+			int y = getint(connection, "y");;
+			float scale = getfloat(connection, "scale", 1.0);;
+			
+			printf("Creating image\n");
+			int * pixels = new int[TILE_SIZE * TILE_SIZE];
+			tile::tile(x, y, scale, pixels);
+			for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
+				pixels[i] |= 0xff000000;
+			}
+			int ret = dumpimage(connection, TILE_SIZE, TILE_SIZE, pixels);
+			delete[] pixels;
+			return ret;
+		} else {
+			printf("Not found\n");
+			s << HEAD("404 - Not Found!");
+			s << "Could not find " << url << endl;
+			s << TAIL();
+			status = MHD_HTTP_NOT_FOUND;
 		}
-		s << "</table>\n";
-		s << TAIL();
-	} else if (0 == strcmp(url, "/style.css")) {
-		printf("Style sheet\n");
-		s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; }\n";
-		s << "table {border-spacing: 0; border: 1px solid black;}\n";
-		s << "td {padding: 0; }\n";
-		mimetype = "text/css";
-	} else if (0 == strcmp(url, "/tile")) {
-		int x;
-		int y;
-		float scale;
-		
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "x");
-		if (!value || sscanf(value, "%d", &x)<0)
-			return invalidarg(connection, "x = [integer]");
-		
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "y");
-		if (!value || sscanf(value, "%d", &y)<0)
-			return invalidarg(connection, "y = [integer]");
-		
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "scale");
-		if (value) {
-			if (sscanf(value, "%f", &scale)<0)
-				return invalidarg(connection, "scale = [float]");
-		} else scale = 1;
-		
-		printf("Creating image\n");
-		int * pixels = new int[TILE_SIZE * TILE_SIZE];
-		tile::tile(x, y, scale, pixels);
-		for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
-			pixels[i] |= 0xff000000;
-		}
-		int ret = dumpimage(connection, TILE_SIZE, TILE_SIZE, pixels);
-		delete[] pixels;
+		return dumpstream(connection, s, status, mimetype);
+	} catch (int ret) {
 		return ret;
-	} else {
-		printf("Not found\n");
-		s << HEAD("404 - Not Found!");
-		s << "Could not find " << url << endl;
-		s << TAIL();
-		status = MHD_HTTP_NOT_FOUND;
 	}
-	return dumpstream(connection, s, status, mimetype);
 }
 
 void * my_logger(void * cls, const char * uri) {

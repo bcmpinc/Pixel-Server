@@ -1,5 +1,6 @@
 #include "tile.h"
 #include "noise.h"
+#include <cmath>
 
 namespace tile {/*}*/
 
@@ -12,12 +13,20 @@ inline int rgb(float r, float g, float b) {
 	return rgb(fist(r*255),fist(g*255),fist(b*255));
 }
 
-float f(float x, float y) {
-	return noise::noise(x, y);
-}
-
-float fs(float x, float y) {
-	return f(x/64,y/64)*0.5+f(x/37,y/37)*0.3+f(x/17,y/17)*0.14+f(x/7,y/7)*0.06;
+float fs(float x, float y, float sc) {
+	float w=.5;
+	float r=0;
+	x*=sc;
+	y*=sc;
+	for (int i=0; i<12; i++) {
+		w*=.7;
+		r+=w*noise::noise(x, y);
+		x+=y;
+		y*=2;
+		y-=x;
+		x+=5;
+	}
+	return sin(15*r);
 }
 
 int grad(float f) {
@@ -30,9 +39,10 @@ int grad(float f) {
 }
 
 void tile(int tx, int ty, float sc, int * p) {
+	sc/=10000;
 	for (int y=0; y<TILE_SIZE; y++) {
 		for (int x=0; x<TILE_SIZE; x++) {
-			p[x+y*TILE_SIZE] = grad(fs(sc*(tx*TILE_SIZE+x), sc*(ty*TILE_SIZE+y)));
+			p[x+y*TILE_SIZE] = grad(fs((tx*TILE_SIZE+x), (ty*TILE_SIZE+y), sc));
 		}
 	}
 }
