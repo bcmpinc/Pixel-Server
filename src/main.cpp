@@ -16,8 +16,8 @@ int handler(Connection& c) {
 		return c.dumpstream(MHD_HTTP_NOT_MODIFIED, "text/html");
 	} else if (c.isurl("/")) {
 		printf("Page\n");
-		int x = c.getint(MHD_GET_ARGUMENT_KIND, "x", 0);
-		int y = c.getint(MHD_GET_ARGUMENT_KIND, "y", 0);
+		int px = c.getint(MHD_GET_ARGUMENT_KIND, "x", 0);
+		int py = c.getint(MHD_GET_ARGUMENT_KIND, "y", 0);
 		float scale = c.getfloat(MHD_GET_ARGUMENT_KIND, "scale", 1.0);
 		c.head("Pixel-Server");
 		c.s << "<h1>Pixel-Server</h1>\n";
@@ -25,9 +25,10 @@ int handler(Connection& c) {
 		for (int y = 0; y < TILES_Y; y++) {
 			c.s << "<tr>";
 			for (int x = 0; x < TILES_X; x++) {
-				c.s << "<td><img src=\"tile?x=" << x << "&y=" << y;
+				c.s << "<td><a href=\"?scale="<<(scale/2)<<"&x="<<(px*2+x*2-TILES_X/2)<<"&y="<<(py*2+y*2-TILES_Y/2)<<"\">";
+				c.s << "<img src=\"tile?x=" << (px+x) << "&y=" << (py+y);
 				if (scale != 1.0) c.s << "&scale=" << scale;
-				c.s << "\"/></td>";
+				c.s << "\"/></a></td>";
 			}
 			c.s << "</tr>\n";
 		}
@@ -36,7 +37,7 @@ int handler(Connection& c) {
 		return c.dumpstream(MHD_HTTP_OK, "text/html");
 	} else if (c.isurl("/style.css")) {
 		printf("Style sheet\n");
-		c.s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; }\n";
+		c.s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; border: none; }\n";
 		c.s << "table {border-spacing: 0; border: 1px solid black;}\n";
 		c.s << "td {padding: 0; }\n";
 		return c.dumpstream(MHD_HTTP_OK, "text/css");
