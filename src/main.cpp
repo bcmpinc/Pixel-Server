@@ -7,10 +7,10 @@
 
 typedef unsigned long long int uint64_t;
 #include <microhttpd.h>
-#include <png.h>
 
 #include "tile.h"
 #include "init.h"
+#include "pngwrite.h"
 
 using namespace std;
 
@@ -34,37 +34,6 @@ int dumpstream(struct MHD_Connection * connection, stringstream &s, int status, 
 	MHD_add_response_header(response, MHD_HTTP_HEADER_SERVER, "Pixel-Server");
 	int ret = MHD_queue_response(connection, status, response);
 	MHD_destroy_response(response);
-	return ret;
-}
-
-void user_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
-	stringstream * s = (stringstream *)png_get_io_ptr(png_ptr);
-	s->write((const char*)data, length);
-}
-void user_flush_data(png_structp png_ptr) {
-}
-
-int dumpimage(struct MHD_Connection * connection, int width, int height, int * data) {
-	int ret;
-	stringstream s;
-	png_bytep row_pointers[height];
-	
-	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-	png_infop info_ptr = png_create_info_struct(png_ptr);
-	if (png_ptr && info_ptr && !setjmp(png_jmpbuf(png_ptr))) {
-		png_set_write_fn(png_ptr, &s, user_write_data, user_flush_data);
-		png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-		for (int i = 0; i < height; i++) row_pointers[i] = (png_byte*)(data + i*width);
-		png_set_rows(png_ptr, info_ptr, row_pointers);
-		png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, 0);
-		ret = dumpstream(connection, s, MHD_HTTP_OK, "image/png");
-	} else {
-		s << HEAD("500 - Error!");
-		s << "Could not create png image.\n";
-		s << TAIL();
-		ret = dumpstream(connection, s, MHD_HTTP_INTERNAL_SERVER_ERROR, "text/html");
-	}
-	png_destroy_write_struct(&png_ptr, &info_ptr);
 	return ret;
 }
 
@@ -165,7 +134,15 @@ int handler(void * cls,
 			for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
 				pixels[i] |= 0xff000000;
 			}
-			int ret = dumpimage(connection, TILE_SIZE, TILE_SIZE, pixels);
+			int ret;
+			if (pngwrite::writeimage(TILE_SIZE, TILE_SIZE, pixels, s)) {
+				ret = dumpstream(connection, s, MHD_HTTP_OK, "image/png");
+			} else {
+				s << HEAD("500 - Error!");
+				s << "Could not create png image.\n";
+				s << TAIL();
+				ret = dumpstream(connection, s, MHD_HTTP_INTERNAL_SERVER_ERROR, "text/html");
+			}
 			delete[] pixels;
 			return ret;
 		} else {
