@@ -20,12 +20,17 @@ int handler(Connection& c) {
 		int py = c.getint(MHD_GET_ARGUMENT_KIND, "y", 0);
 		float scale = c.getfloat(MHD_GET_ARGUMENT_KIND, "scale", 1.0);
 		c.head("Pixel-Server");
-		c.s << "<h1>Pixel-Server</h1>\n";
+		c.s << "<h2>Pixel-Server</h2>\n";
+		c.s << "<a href=\"?x="<<px<<"&y="<<(py-1)<<"&scale="<<scale<<"\"class=\"ya\">^</a>";
+		c.s << "<a href=\"?x="<<px<<"&y="<<(py+1)<<"&scale="<<scale<<"\"class=\"yb\">v</a>";
+		c.s << "<a href=\"?x="<<(px-1)<<"&y="<<py<<"&scale="<<scale<<"\"class=\"xa\">&lt;</a>";
+		c.s << "<a href=\"?x="<<(px+1)<<"&y="<<py<<"&scale="<<scale<<"\"class=\"xb\">&gt;</a>";
+		c.s << "<a href=\"?x="<<(px/2)<<"&y="<<(py/2)<<"&scale="<<(scale*2)<<"\"class=\"zo\">-</a>";
 		c.s << "<table>\n";
-		for (int y = 0; y < TILES_Y; y++) {
+		for (int y = -TILES_Y; y <= TILES_Y; y++) {
 			c.s << "<tr>";
-			for (int x = 0; x < TILES_X; x++) {
-				c.s << "<td><a href=\"?scale="<<(scale/2)<<"&x="<<(px*2+x*2-TILES_X/2)<<"&y="<<(py*2+y*2-TILES_Y/2)<<"\">";
+			for (int x = -TILES_X; x <= TILES_X; x++) {
+				c.s << "<td><a href=\"?scale="<<(scale/2)<<"&x="<<(px*2+x*2)<<"&y="<<(py*2+y*2)<<"\">";
 				c.s << "<img src=\"tile?x=" << (px+x) << "&y=" << (py+y);
 				if (scale != 1.0) c.s << "&scale=" << scale;
 				c.s << "\"/></a></td>";
@@ -40,6 +45,13 @@ int handler(Connection& c) {
 		c.s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; border: none; }\n";
 		c.s << "table {border-spacing: 0; border: 1px solid black;}\n";
 		c.s << "td {padding: 0; }\n";
+		c.s << "h2 {position: absolute; background: rgba(255,255,255,0.5);}\n";
+		c.s << ".xa, .xb, .ya, .yb, .zo {position: absolute; display: block; width: 18px; height: 18px; border:1px solid black; text-align: center; color: black; text-decoration: none;}\n";
+		c.s << ".xa {top: 25px; right: 45px;}\n";
+		c.s << ".xb {top: 25px; right:  5px;}\n";
+		c.s << ".ya {top:  5px; right: 25px;}\n";
+		c.s << ".yb {top: 45px; right: 25px;}\n";
+		c.s << ".zo {top: 25px; right: 25px;}\n";
 		return c.dumpstream(MHD_HTTP_OK, "text/css");
 	} else if (c.isurl("/tile")) {
 		int x = c.getint(MHD_GET_ARGUMENT_KIND, "x");
