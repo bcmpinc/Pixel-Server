@@ -45,7 +45,7 @@ int handler(Connection& c) {
 		c.s << "img {width: " << TILE_SIZE << "; height: " << TILE_SIZE << "; border: none; }\n";
 		c.s << "table {border-spacing: 0; border: 1px solid black;}\n";
 		c.s << "td {padding: 0; }\n";
-		c.s << "h2 {position: absolute; background: rgba(255,255,255,0.5);}\n";
+		c.s << "h2 {position: absolute; background: rgba(255,255,255,0.5); bottom: 0; right: 12px;}\n";
 		c.s << ".xa, .xb, .ya, .yb, .zo {position: absolute; display: block; width: 18px; height: 18px; border:1px solid black; text-align: center; color: black; text-decoration: none;}\n";
 		c.s << ".xa {top: 25px; right: 45px;}\n";
 		c.s << ".xb {top: 25px; right:  5px;}\n";

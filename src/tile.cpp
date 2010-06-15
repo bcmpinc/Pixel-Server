@@ -10,36 +10,52 @@ inline int rgb(int r, int g, int b) {
 	return CLAMP(r)|CLAMP(g)<<8|CLAMP(b)<<16;
 }
 inline int rgb(float r, float g, float b) {
-	return rgb(fist(r*255),fist(g*255),fist(b*255));
+	return rgb(fist(r),fist(g),fist(b));
+}
+inline int rgbu(float r, float g, float b) {
+	return rgb(r*255,g*255,b*255);
+}
+
+int rgbl(float t, int a, int b) {
+	float s=1-t;
+	unsigned char * c = (unsigned char*)&a;
+	unsigned char * d = (unsigned char*)&b;
+	return rgb(
+		c[0]*s + d[0]*t, 
+		c[1]*s + d[1]*t, 
+		c[2]*s + d[2]*t
+	);
 }
 
 float fs(float x, float y, float sc) {
-	float w=.5;
+	float w=1;
 	float r=0;
 	x*=sc;
 	y*=sc;
-	for (int i=0; i<12; i++) {
-		w*=.7;
+	for (int i=0; i<8; i++) {
+		w*=.5;
 		r+=w*noise::noise(x, y);
 		x+=y;
-		y*=2;
+		y*=2.82427;
+		x*=1.41214;
 		y-=x;
 		x+=5;
 	}
-	return sin(15*r);
+	return r;
 }
 
 int grad(float f) {
-	f=.5-f/2;
-	if (f<0.2f) return 0xffffff;
-	if (f>0.8f) return 0x000000;
-	if (f<0.4f) return rgb(1.2f-f,1.2f-f,1.6f-3*f);
-	if (f<0.6f) return rgb(1.2f-f,2.0f-3*f,1.6f-3*f);
-	return rgb(2.4f-3*f,2.0f-3*f,1.6f-3*f);
+	if (f< 0.00f) return rgb(0,0,192);
+	if (f< 0.10f) return rgbl((f+0.00)/.10, rgb(0,0,192), rgb(0,255,255));
+	if (f< 0.15f) return rgbl((f-0.10)/.05, rgb(128,128,64), rgb(255,192,0));
+	if (f< 0.25f) return rgbl((f-0.15)/.10, rgb(255,192,0), rgb(0,255,0));
+	if (f< 0.50f) return rgbl((f-0.25)/.25, rgb(0,255,0), rgb(0,128,0));
+	if (f< 0.65f) return rgbl((f-0.50)/.05, rgb(0,128,0), rgb(192,192,192));
+	return rgb(192,192,192);
 }
 
 void tile(int tx, int ty, float sc, int * p) {
-	sc/=10000;
+	sc/=4096;
 	for (int y=0; y<TILE_SIZE; y++) {
 		for (int x=0; x<TILE_SIZE; x++) {
 			p[x+y*TILE_SIZE] = grad(fs((tx*TILE_SIZE+x), (ty*TILE_SIZE+y), sc));
