@@ -10,6 +10,7 @@ typedef unsigned long long int uint64_t;
 #include <png.h>
 
 #include "tile.h"
+#include "init.h"
 
 using namespace std;
 
@@ -123,7 +124,7 @@ int handler(void * cls,
 		else scale = 1;
 		
 		int * pixels = new int[TILE_SIZE * TILE_SIZE];
-		tile(x, y, scale, pixels);
+		tile::tile(x, y, scale, pixels);
 		for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
 			pixels[i] |= 0xff000000;
 		}
@@ -147,7 +148,7 @@ void * my_logger(void * cls, const char * uri) {
 
 int main(int argc, char ** argv) {
 	printf("Initializing.\n");
-	tile_init(argc, argv);
+	initialize();
 	sprintf(etag, "%0lx", time(NULL));
 	printf("Creating daemon.\n");
 	struct MHD_Daemon * d = MHD_start_daemon(
