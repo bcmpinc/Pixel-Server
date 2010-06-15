@@ -68,6 +68,13 @@ int dumpimage(struct MHD_Connection * connection, int width, int height, int * d
 	return ret;
 }
 
+int invalidarg(struct MHD_Connection * connection, const char * arg) {
+	printf("Invalid arg: %s\n", arg);
+	stringstream s;
+	s<<HEAD("422 - Argument missing")<<"Argument "<<arg<<" is missing or invalid.\n"<<TAIL();
+	return dumpstream(connection, s, MHD_HTTP_UNPROCESSABLE_ENTITY, "text/html");
+}
+
 int handler(void * cls,
 			struct MHD_Connection * connection,
 			const char * url,
@@ -110,19 +117,25 @@ int handler(void * cls,
 		s << "td {padding: 0; }\n";
 		mimetype = "text/css";
 	} else if (0 == strcmp(url, "/tile")) {
-		printf("Creating image\n");
 		int x;
 		int y;
 		float scale;
 		
 		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "x");
-		if (value) sscanf(value, "%d", &x);
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "y");
-		if (value) sscanf(value, "%d", &y);
-		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "scale");
-		if (value) sscanf(value, "%f", &scale);
-		else scale = 1;
+		if (!value || sscanf(value, "%d", &x)<0)
+			return invalidarg(connection, "x = [integer]");
 		
+		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "y");
+		if (!value || sscanf(value, "%d", &y)<0)
+			return invalidarg(connection, "y = [integer]");
+		
+		value = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "scale");
+		if (value) {
+			if (sscanf(value, "%f", &scale)<0)
+				return invalidarg(connection, "scale = [float]");
+		} else scale = 1;
+		
+		printf("Creating image\n");
 		int * pixels = new int[TILE_SIZE * TILE_SIZE];
 		tile::tile(x, y, scale, pixels);
 		for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
