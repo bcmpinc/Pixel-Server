@@ -1,5 +1,6 @@
 #include "tile.h"
 #include "noise.h"
+#include "float.h"
 #include <cmath>
 
 namespace tile {/*}*/
@@ -41,7 +42,7 @@ float fs(float x, float y, float sc) {
 		y-=x;
 		x+=5;
 	}
-	return r;
+	return r-0.1;
 }
 
 int grad(float f) {
@@ -55,7 +56,7 @@ int grad(float f) {
 }
 
 void tile(int tx, int ty, float sc, int * p) {
-	sc/=4096;
+	sc/=8192;
 	for (int y=0; y<TILE_SIZE; y++) {
 		for (int x=0; x<TILE_SIZE; x++) {
 			p[x+y*TILE_SIZE] = grad(fs((tx*TILE_SIZE+x), (ty*TILE_SIZE+y), sc));

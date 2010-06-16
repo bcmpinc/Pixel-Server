@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "noise.h"
+#include "float.h"
 
 namespace noise {/*}*/
 
@@ -16,20 +17,18 @@ void initialize() {
 		g[i]=rand() / (RAND_MAX/2.0f) - 1;
 	}
 	for (int i=0; i<NOISE_LENGTH; i++) {
-		int j = rand() % NOISE_LENGTH;
+		int j = rand() & (NOISE_LENGTH-1);
 		p[i]^=p[j]^=p[i]^=p[j];
 	}
 }
 
 // Noise functions
-float noise(int x) { return g[x & 0xff]; }
-float noise(int x, int y) { return g[(x + p[y & 0xff]) & 0xff]; }
-float noise(int x, int y, int z) { return g[(x + p[(y + p[z & 0xff]) & 0xff]) & 0xff]; }
-
-inline float lerp3(float t, float a, float b, float c) {
-	float st = t * t;
-	return (c*(st+2*t+1) + b*(5-st) + a*(st-2*t+1)) / (7+st);
-}
+#define P(x) (p[((x))&(NOISE_LENGTH-1)])
+#define G(x) (g[((x))&(NOISE_LENGTH-1)])
+float noise(int x) { return G(x); }
+float noise(int x, int y) { return G(x + P(y)); }
+float noise(int x, int y, int z) { return G(x + P(y + P(z))); }
+float noise(int x, int y, int z, int w) { return G(x + P(y + P(z + P(w)))); }
 
 float noise(float x) {
 	int   px = fist(x);
@@ -40,7 +39,7 @@ float noise(float x) {
 	float f = noise(px+1);
 	
 	x*=2;
-	return  lerp3(x,d,e,f);
+	return  lerp(x,d,e,f);
 }
 
 float noise(float x, float y) {
@@ -59,11 +58,11 @@ float noise(float x, float y) {
 	
 	x*=2;
 	y*=2;
-	float k=lerp3(x,a,b,c);
-	float l=lerp3(x,d,e,f);
-	float m=lerp3(x,g,h,i);
+	float k=lerp(x,a,b,c);
+	float l=lerp(x,d,e,f);
+	float m=lerp(x,g,h,i);
 	
-	return  lerp3(y,k,l,m);
+	return  lerp(y,k,l,m);
 }
 
 float noise(float x, float y, float z) {
@@ -86,11 +85,11 @@ float noise(float x, float y, float z) {
 	
 	x*=2;
 	y*=2;
-	float k=lerp3(x,a,b,c);
-	float l=lerp3(x,d,e,f);
-	float m=lerp3(x,g,h,i);
+	float k=lerp(x,a,b,c);
+	float l=lerp(x,d,e,f);
+	float m=lerp(x,g,h,i);
 	
-	return  lerp3(y,k,l,m)/(7+sz);
+	return  lerp(y,k,l,m)/(7+sz);
 }
 
 
