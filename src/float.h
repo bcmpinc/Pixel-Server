@@ -29,5 +29,11 @@ inline float lerp(float t, float a, float b, float c) {
 	float st = t * t;
 	return (c*(st+2*t+1) + b*(5-st) + a*(st-2*t+1)) / (7+st);
 }
+/**
+ * Linear interpolation function
+ */
+inline float lerp(float t, float a, float b) {
+	return ((1-t)*a+(1+t)*b)*.5;
+}
 
 #endif

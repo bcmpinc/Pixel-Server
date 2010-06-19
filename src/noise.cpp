@@ -92,7 +92,5 @@ float noise(float x, float y, float z) {
 	return  lerp(y,k,l,m)/(7+sz);
 }
 
-
 /*{*/}
-
 
