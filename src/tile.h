@@ -7,7 +7,7 @@
 
 namespace tile {
 	void initialize();
-	void tile(int x, int y, float scale, int * pixels);
+	void tile(int x, int y, int scale, int * pixels);
 }
 
 #endif

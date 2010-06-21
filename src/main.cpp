@@ -18,19 +18,19 @@ int handler(Connection& c) {
 		printf("Page\n");
 		int px = c.getint(MHD_GET_ARGUMENT_KIND, "x", 0);
 		int py = c.getint(MHD_GET_ARGUMENT_KIND, "y", 0);
-		float scale = c.getfloat(MHD_GET_ARGUMENT_KIND, "scale", 1.0);
+		int scale = c.getint(MHD_GET_ARGUMENT_KIND, "scale", 0);
 		c.head("Pixel-Server");
 		c.s << "<h2>Pixel-Server</h2>\n";
 		c.s << "<a href=\"?x="<<px<<"&y="<<(py-1)<<"&scale="<<scale<<"\"class=\"ya\">^</a>";
 		c.s << "<a href=\"?x="<<px<<"&y="<<(py+1)<<"&scale="<<scale<<"\"class=\"yb\">v</a>";
 		c.s << "<a href=\"?x="<<(px-1)<<"&y="<<py<<"&scale="<<scale<<"\"class=\"xa\">&lt;</a>";
 		c.s << "<a href=\"?x="<<(px+1)<<"&y="<<py<<"&scale="<<scale<<"\"class=\"xb\">&gt;</a>";
-		c.s << "<a href=\"?x="<<(px/2)<<"&y="<<(py/2)<<"&scale="<<(scale*2)<<"\"class=\"zo\">-</a>";
+		c.s << "<a href=\"?x="<<(px/2)<<"&y="<<(py/2)<<"&scale="<<(scale-1)<<"\"class=\"zo\">-</a>";
 		c.s << "<table>\n";
 		for (int y = -TILES_Y; y <= TILES_Y; y++) {
 			c.s << "<tr>";
 			for (int x = -TILES_X; x <= TILES_X; x++) {
-				c.s << "<td><a href=\"?scale="<<(scale/2)<<"&x="<<(px*2+x*2)<<"&y="<<(py*2+y*2)<<"\">";
+				c.s << "<td><a href=\"?scale="<<(scale+1)<<"&x="<<(px*2+x*2)<<"&y="<<(py*2+y*2)<<"\">";
 				c.s << "<img src=\"tile?x=" << (px+x) << "&y=" << (py+y);
 				if (scale != 1.0) c.s << "&scale=" << scale;
 				c.s << "\"/></a></td>";

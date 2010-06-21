@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cmath>
 
 #include "noise.h"
 #include "float.h"
@@ -12,9 +13,13 @@ float g[NOISE_LENGTH];
 
 void initialize() {
 	srand(1337);
-	for (int i=0; i<NOISE_LENGTH; i++) {
+	for (int i=0; i<NOISE_LENGTH; i+=2) {
 		p[i]=i;
-		g[i]=rand() / (RAND_MAX/2.0f) - 1;
+		p[i+1]=i+1;
+		float a=sqrt(-2*log(rand()/(float)RAND_MAX));
+		float b=(rand()/(float)RAND_MAX)*2*M_PI;
+		g[i]=a*sin(b);
+		g[i+1]=a*cos(b);
 	}
 	for (int i=0; i<NOISE_LENGTH; i++) {
 		int j = rand() & (NOISE_LENGTH-1);
@@ -89,7 +94,7 @@ float noise(float x, float y, float z) {
 	float l=lerp(x,d,e,f);
 	float m=lerp(x,g,h,i);
 	
-	return  lerp(y,k,l,m)/(7+sz);
+	return  lerp(y,k,l,m) / (7+sz);
 }
 
 /*{*/}
