@@ -1,6 +1,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <agg2/agg_rendering_buffer.h>
+#include <agg2/agg_pixfmt_rgba.h>
+#include <agg2/agg_renderer_base.h>
+
 #include "tile.h"
 #include "init.h"
 #include "pngwrite.h"
@@ -59,13 +63,17 @@ int handler(Connection& c) {
 		float scale = c.getfloat(MHD_GET_ARGUMENT_KIND, "scale", 1.0);
 		
 		printf("Creating image\n");
-		int * pixels = new int[TILE_SIZE * TILE_SIZE];
-		tile::tile(x, y, scale, pixels);
+		unsigned char * pixels = new unsigned char[TILE_SIZE * TILE_SIZE * 4];
+		agg::rendering_buffer rbuf(pixels, TILE_SIZE, TILE_SIZE, TILE_SIZE*4);
+		tile::pixfmt pfmt(rbuf);
+		tile::rendererbase rbase(pfmt);
+		
+		tile::tile(x, y, scale, rbase);
 		for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
-			pixels[i] |= 0xff000000;
+			pixels[i*4+3] |= 0xff;
 		}
 		int ret;
-		if (pngwrite::writeimage(TILE_SIZE, TILE_SIZE, pixels, c.s)) {
+		if (pngwrite::writeimage(rbuf, c.s)) {
 			ret = c.dumpstream(MHD_HTTP_OK, "image/png");
 		} else {
 			c.head("500 - Error!");

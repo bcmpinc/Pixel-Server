@@ -2,6 +2,9 @@
 #include <cstdio>
 #include <cmath>
 
+#include <agg2/agg_renderer_primitives.h>
+#include <agg2/agg_renderer_outline_aa.h>
+
 #include "tile.h"
 #include "noise.h"
 #include "rgb.h"
@@ -32,28 +35,25 @@ Gradient g[] = {
 	{0.50, rgb(255,255,255)},
 };
 
-float fs(float x, float y, float sc) {
-	float w=1;
-	float r=0;
-	x*=sc;
-	y*=sc;
-	for (int i=0; i<12; i++) {
-		w*=.5;
-		r+=w*noise::noise(x, y);
-		y*=2;
-		x*=2;
-	}
-	return r;
-}
+class conv{
+	public:
+	int ox, oy; // pixel offset (before scaling)
+	int sc; // scale level
+	double w; // width of a single (pixel at scale 0)
+	conv(int tx, int ty, int _sc) : ox(tx*TILE_SIZE*256), oy(ty*TILE_SIZE*256), sc(_sc), w(ldexp(1,_sc)) {}
+	int x(int v) {return ((v*256<<sc)-ox);}
+	int y(int v) {return ((v*256<<sc)-oy);}
+};
 
-void tile(int tx, int ty, int sc, int * p) {
-	sc+=14;
-	if (sc<0) printf("Scale is negative.\n");
-	for (int y=0; y<TILE_SIZE; y++) {
-		for (int x=0; x<TILE_SIZE; x++) {
-			p[x+y*TILE_SIZE] = grad(g, LENGTHOF(g), fs(x+tx*TILE_SIZE,y+ty*TILE_SIZE,ldexp(1,-sc)));
-		}
-	}
+void tile(int tx, int ty, int sc, rendererbase& rbase) {
+	conv c(tx,ty,sc);
+	rbase.clear(agg::rgba8(255, 255, 255));
+	
+	agg::line_profile_aa lp(c.w,agg::gamma_none());
+	agg::renderer_outline_aa<rendererbase> aa(rbase,lp);
+	agg::line_parameters line(c.x(-50),c.y(400),c.x(600),c.y(0),256*256<<sc);
+	aa.color(agg::rgba8(0,0,0));
+	aa.line0(line);
 }
 
 void initialize() {
